@@ -81,7 +81,7 @@ keywords = get_data('Keywords')
 locations = get_data('Locations')
 Pages = get_data('Pages')
 
-driver = chrome(True)
+driver = chrome()
 
 driver.set_page_load_timeout(30)
 driver.maximize_window()
@@ -170,7 +170,8 @@ for keyword in keywords:
                     #     df.to_excel(writer, sheet_name='Sheet1', index=False)
                     #     writer.save()
             clicking_next_button(driver)
-
+driver.quit()
+driver = chrome(True)
 groups_link = list(set(groups_link))
 for group_link in groups_link:
     url = group_link
@@ -183,6 +184,7 @@ for group_link in groups_link:
     url = url.split('/')[:5]
     url = '/'.join(url)
     f_url = "https://www." + '.'.join(raw_url)
+    f_url = f_url.split('?')[0]
     f_url = f_url.split('/')[2:5]
 
     f_url = '/'.join(f_url)
