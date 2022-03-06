@@ -1,3 +1,4 @@
+import time
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
@@ -95,6 +96,8 @@ for keyword in keywords:
 
         if(str(keyword) == 'nan'):
             continue
+        # if there is sorry keyword in current_url thhen wait for 10 seconds
+
         search_box = driver.find_element_by_name('q')
         # clear the search box
         search_box.clear()
@@ -109,6 +112,15 @@ for keyword in keywords:
             print("Loading took too much time!")
         except Exception as e:
             print(e)
+
+        def fill_captcha():
+            if 'sorry' in str(driver.current_url):
+                print("info : please try to fill the captcha")
+                time.sleep(10)
+                fill_captcha()
+            else:
+                pass
+        fill_captcha()
         count = Pages[index]
         for i in range(count):
             scroll_down_page(40)
