@@ -9,7 +9,6 @@ from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.action_chains import ActionChains
 import pandas as pd
-import fake_useragent
 # make chrome headless function
 
 
@@ -82,11 +81,14 @@ keywords = get_data('Keywords')
 locations = get_data('Locations')
 Pages = get_data('Pages')
 
-driver = chrome()
+driver = chrome(True)
 
 driver.set_page_load_timeout(30)
 driver.maximize_window()
-
+groups_link = []
+groups_name = []
+final_names = []
+final_links = []
 driver.get('https://www.google.com/')
 for keyword in keywords:
     for index in range(len(locations)):
@@ -102,7 +104,7 @@ for keyword in keywords:
         # clear the search box
         search_box.clear()
         search_box.send_keys(
-            "'"+str(keyword)+"'" + ' site:facebook.com/groups in ' + str(locations[index]))
+            "'"+str(keyword)+"'" + ' site:facebook.com/groups public in ' + str(locations[index]))
         search_box.send_keys(Keys.RETURN)
         try:
             element = WebDriverWait(driver, 10).until(
@@ -146,15 +148,105 @@ for keyword in keywords:
                     # get the group link
                     group_link = tag.get('href')
                     # print the group name and link
+                    groups_link.append(group_link)
+                    groups_name.append(group_name)
                     print(group_name)
-                    print(group_link)
-                    # write the group name and link to a file
-                    with open('groups.txt', 'a', encoding='UTF-8') as f:
-                        f.write(group_name + '\n')
-                        f.write(group_link + '\n')
+                    # print(group_link)
+                    # # write the group name and link to a file
+                    with open('groups.txt', 'r+', encoding='UTF-8') as f:
+                        # if group_name and group_link already exist in the file then skip
+                        # read the file
+                        lines = f.read()
 
+                        # check if the group_name and group_link already exist in the file
+
+                        if group_link not in lines:
+                            print("not in file writing")
+                            f.write(group_link + '\n')
+                    # write names and links in output.xlsx file
+                    # with pd.ExcelWriter('output.xlsx', mode='a') as writer:
+                    #     df = pd.DataFrame(
+                    #         {'Group Name': groups_name, 'Group Link': groups_link})
+                    #     df.to_excel(writer, sheet_name='Sheet1', index=False)
+                    #     writer.save()
             clicking_next_button(driver)
 
+groups_link = list(set(groups_link))
+for group_link in groups_link:
+    url = group_link
+    # remove the first part with .
+    raw_url = url.split('.')[1:]
+    init_url = "https://m."
+    # add init_url at index 0
+    url = init_url + '.'.join(raw_url)
+    url = url.split('?')[0]
+    url = url.split('/')[:5]
+    url = '/'.join(url)
+    f_url = "https://www." + '.'.join(raw_url)
+    f_url = f_url.split('/')[2:5]
+
+    f_url = '/'.join(f_url)
+    driver.get(url)
+    # scroll 300px
+    driver.execute_script("window.scrollTo(0, 400);")
+    # wait for the page to load
+    # time.sleep(3)
+    # get the page source
+    page_source = driver.page_source
+    # make soup
+    soup = BeautifulSoup(page_source, 'html.parser')
+    print("trying this url: " + url)
+
+    # get the div with class="_52ja _52jg"
+    try:
+
+        div = soup.find('div', attrs={'class': '_52ja _52jg'})
+    except Exception as e:
+        pass
+    try:
+
+        # get the name of group with div class _de1
+        name = soup.find('div', attrs={'class': '_5xu4'})
+        h1 = name.find('h1')
+    except Exception as e:
+        pass
+    # get h1 tag in name
+
+    # get the text from the div
+    try:
+
+        text = div.contents[0]
+    except Exception as e:
+        pass
+    try:
+
+        group_type_alt = name.find("div", attrs={'class': '_52jc _4g8l _5tg_'})
+    except Exception as e:
+        pass
+    try:
+        if text == 'Public':
+            print("Public")
+            final_links.append(f_url)
+            final_names.append(h1.text)
+
+        print("group type: "+text)
+        print("alt group type: " + group_type_alt.text)
+        # print h1 tag text
+        print("group name: "+h1.text)
+    except Exception as e:
+        pass
 
 print("success: Done")
-# driver.quit()
+driver.quit()
+print("total links: " + str(len(groups_link)))
+print("total public: " + str(len(final_links)))
+
+
+# export the group names and links to a xlsx file named output.xlsx
+#  export the group names and links to a xlsx file named output.xlsx
+with pd.ExcelWriter('output.xlsx') as writer:
+    df = pd.DataFrame.from_dict(
+        {'Group Name': final_names, 'Group Link': final_links}, orient='index')
+    df = df.transpose()
+
+    df.to_excel(writer, sheet_name='Sheet1', index=False)
